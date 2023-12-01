@@ -19,15 +19,15 @@ Located in the installation folder is a configuration file that loads when the C
   "serialParity": "None",<br>
   "serialStop": "1"<br>
 }<br>
-udpPort is the port that this program listens to.<br>
-cpuLatitude is the latitude of the LilyGO computer. Be sure to change this when you move around.<br>
-cpuLongitude is the longitude of the LilyGO computer. Be sure to change this when you move around.<br>
-cpuAltitude is the altitude (in meters) of the LilyGo computer. Be sure to change this when you move around.<br>
-serialPort is the port this system uses<br>
-serialBaud is the baud rate this system uses<br>
-serialData is the number of databits this system uses<br>
-serialParity is the parity this system uses. Options are Mark, Space, Even, Odd, and None. The default is None if an invalid entry is provided.<br>
-serialStop is the number of stop bits this system uses. Options are 1 or 2. The default is 1 if an invalid entry is provided.<br>
+<b>udpPort</b> is the port that this program listens to.<br>
+<b>cpuLatitude</b> is the latitude of the LilyGO computer. Be sure to change this when you move around.<br>
+<b>cpuLongitude</b> is the longitude of the LilyGO computer. Be sure to change this when you move around.<br>
+<b>cpuAltitude</b> is the altitude (in meters) of the LilyGo computer. Be sure to change this when you move around.<br>
+<b>serialPort</b> is the port this system uses<br>
+<b>serialBaud</b> is the baud rate this system uses<br>
+<b>serialData</b> is the number of databits this system uses<br>
+<b>serialParity</b> is the parity this system uses. Options are Mark, Space, Even, Odd, and None. The default is None if an invalid entry is provided.<br>
+<b>serialStop</b> is the number of stop bits this system uses. Options are 1 or 2. The default is 1 if an invalid entry is provided.<br>
 
 <b>LilyGO Setup</b><br>
 From the Configuration panel, you need to enable the ChaseMapper function, insert the IP address of the computer running ChaseMappr, and enter the port number used for Chasemappr. 
@@ -39,7 +39,7 @@ The LilyGO ChaseMappr feature sends JSON packets like these when they are receiv
 These can come as frequently as 1 per second.
 
 <b>Output Data</b><br>
-The Gordon Cooper project requires data in the following fixed text format. Characters 1 through 11 are the latitude, 13 through 13 are the longitude, 25 through 29 is the altitude (in meters), and character 31 is the data source. "L" for the LilyGO location. "$" is for the balloon location. <br>
+The Gordon Cooper project requires data in the following fixed text format. Characters 1 through 11 are the latitude, 13 through 13 are the longitude, 25 through 29 is the altitude (in meters), and character 31 is the data source. "L" for the LilyGO location (The LilyGO location is sent at the start of the program and every 10 balloon packets. "$" is for the balloon location. <br>
 
 +035.379917,-096.907845,00325,L<br>
 +035.210820,-097.421100,02141,$<br>
