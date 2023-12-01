@@ -4,7 +4,7 @@ Executive Summary
 This program will receive ChaseMapper data via UDP from the RDZSonde devices, store the JSON data to a text file, deserialize the JSON data, display the data to the console, and send the balloon lat, lon, and altitude data out a serial port (USB) and store the data in the ChaseMappr.txt file in the Documents folder. This program feeds external devices like the Gordon Cooper High Altitude Balloon Pointing Device.<br>
 
 <b>Installation</b><br>
-This program is supplied as a ZIP file. Make a folder somewhere on your computer and unzip the ChaseMappr.zip file to that folder. Since this is a "server" program, the first time this program is executed, Windows asks your permission to let packets through the firewall system. You must check all three networks, domain, public, and local to let all packets through to the computer.
+This program is supplied as a ZIP file. Make a folder somewhere on your computer and unzip the ChaseMappr.zip file to that folder. Since this is a "server" program, the first time this program is executed, Windows asks your permission to let packets through the firewall system. You must check all three networks, domain, public, and local to let all packets through to the computer. This was compiled using .NET 8 and should run on Windows, Linux, and Mac's which have the .NET 8 system loaded. Windows should have this all ready to go, but if you receive an error about the .NET 8 version in your machine, it can be downloaded from this link https://dotnet.microsoft.com/en-us/download/dotnet/8.0
 
 <b>Configuration</b><br>
 Located in the installation folder is a configuration file that loads when the ChaseMappr program starts. This file is called appsetting.json with the following information.<br>
