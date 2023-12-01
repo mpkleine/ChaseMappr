@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.IO.Ports;
 
 // Program to listen on a UDP port for CHASEMAPPER UDP packets from the LilyGO RDZSonde device
 // and write them to a file.
@@ -31,9 +32,10 @@ namespace ClassMappr
 
         public static void Main()
         {
-            // Display the header
-            Console.WriteLine("ChaseMappr: UDP Listener");
+            // Display the program header
+            Console.WriteLine("ChaseMappr: UDP Listener v 1.0.0");
 
+            // Initialize the counter to send out a cpu location every 10 balloon packets
             int sendCounter = 0;
 
             // Get the configuration information from the appsettings.json file
@@ -44,6 +46,11 @@ namespace ClassMappr
             string? cpuLat = configuration["cpuLatitude"];
             string? cpuLon = configuration["cpuLongitude"];
             string? cpuAlt = configuration["cpuAltitude"];
+            string? serialPort = configuration["serialPort"];
+            string? serialBaud = configuration["serialBaud"];
+            string? serialData = configuration["serialData"];
+            string? serialStop = configuration["serialStop"];
+            string? serialParity = configuration["serialParity"];
             // Convert config info as required
             double cpuLatitude = Convert.ToDouble(cpuLat);
             double cpuLongitude = Convert.ToDouble(cpuLon);
@@ -58,13 +65,52 @@ namespace ClassMappr
             // Create the UDP socket
             UdpClient udpServer = new UdpClient(udpPort);
 
+            // Open the Serial Port
+            SerialPort mySerialPort = new SerialPort();
+            mySerialPort.PortName = serialPort;
+            mySerialPort.BaudRate = (int)Convert.ToInt64(serialBaud);
+            mySerialPort.DataBits = Convert.ToInt32(serialData);
+            switch (serialParity?.ToLower())
+            {
+                case "even":
+                    mySerialPort.Parity = Parity.Even;
+                    break;
+                case "odd":
+                    mySerialPort.Parity = Parity.Odd;
+                    break;
+                case "mark":
+                    mySerialPort.Parity = Parity.Mark;
+                    break;
+                case "space":
+                    mySerialPort.Parity = Parity.Space;
+                    break;
+                default:
+                    mySerialPort.Parity = Parity.None;
+                    break;
+            }
+            switch (serialStop)
+            {
+                case "0":
+                    mySerialPort.StopBits = StopBits.None;
+                    break;
+                case "2":
+                    mySerialPort.StopBits = StopBits.Two;
+                    break;
+                default:
+                    mySerialPort.StopBits = StopBits.One;
+                    break;
+            }
+            mySerialPort.Open();
+
             // Send initial CPU Location
-            sendCpuLocation(cpuLatitude, cpuLongitude, cpuAltitude);
-            fileCpu(cpuLatitude, cpuLongitude, cpuAltitude);
+            sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+            sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+            sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
 
             // Loop forever
             while (true)
             {
+                // open the port for receive, listen for the packet
                 var remoteEP = new IPEndPoint(IPAddress.Any, udpPort);
                 var data = udpServer.Receive(ref remoteEP);
                 string someString = Encoding.ASCII.GetString(data);
@@ -72,62 +118,56 @@ namespace ClassMappr
                 // Deserialize the JSON packet received into the skypacket class
                 Packet? skypacket = JsonSerializer.Deserialize<Packet>(someString);
 
-                // output the proper format
-                sendBalloonLocation(skypacket?.latitude, skypacket?.longitude, skypacket?.altitude);
-                filePackets(skypacket?.latitude, skypacket?.longitude, skypacket?.altitude);
+                // output the properly formatted balloon packet to the screen, log file, and serial port
+                sendScreen(formatInfo(Convert.ToDouble(skypacket?.latitude),
+                    Convert.ToDouble(skypacket?.longitude),
+                    Convert.ToDouble(skypacket?.altitude), "$"));
+                sendFile(formatInfo(Convert.ToDouble(skypacket?.latitude),
+                    Convert.ToDouble(skypacket?.longitude),
+                    Convert.ToDouble(skypacket?.altitude), "$"));
+                sendSerial(formatInfo(Convert.ToDouble(skypacket?.latitude),
+                    Convert.ToDouble(skypacket?.longitude),
+                    Convert.ToDouble(skypacket?.altitude), "$"), mySerialPort);
 
-                // send a cpu location every 10 packets
+                // send cpu location every 10 packets
                 if (sendCounter++ > 8)
                 {
-                    sendCpuLocation(cpuLatitude, cpuLongitude, cpuAltitude);
-                    fileCpu(cpuLatitude, cpuLongitude, cpuAltitude);
+                    sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+                    sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+                    sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+
+                    // clear the counter to start over again
                     sendCounter = 0;
                 }
             }
         }
 
-        private static void sendBalloonLocation(double? cpuLatitude, double? cpuLongitude, int? cpuAltitude)
+        // send the line to the screen
+        private static void sendScreen(string formattedString)
         {
-            Console.Write($"{cpuLatitude:+000.000000;-000.000000},");
-            Console.Write($"{cpuLongitude:+000.000000;-000.000000},");
-            Console.WriteLine($"{cpuAltitude:00000},$");
+            Console.Write($"{formattedString}");
         }
 
-        private static void sendCpuLocation(double? cpuLatitude, double? cpuLongitude, int? cpuAltitude)
-        {
-            Console.Write($"{cpuLatitude:+000.000000;-000.000000},");
-            Console.Write($"{cpuLongitude:+000.000000;-000.000000},");
-            Console.WriteLine($"{cpuAltitude:00000},L");
-        }
-
-        private static void filePackets(double? latitude, double? longitude, int? altitude)
+        // send the line to the log file
+        private static void sendFile(string formattedString)
         {
             // Set a variable to the Documents path.
             string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-            // Write the string array to a new file named "WriteLines.txt".
-            using (StreamWriter outputFile = File.AppendText(Path.Combine(docPath, "WriteLines.txt")))
+            // Write the string array to a new file named "ChaseMappr.txt".
+            using (StreamWriter outputFile = File.AppendText(Path.Combine(docPath, "ChaseMappr.txt")))
             {
-                outputFile.Write($"{latitude:+000.000000;-000.000000},");
-                outputFile.Write($"{longitude:+000.000000;-000.000000},");
-                outputFile.WriteLine($"{altitude:00000},$");
+                outputFile.Write($"{formattedString}");
             }
         }
 
-        private static void fileCpu(double? cpuLatitude, double? cpuLongitude, int? cpuAltitude)
+        // send the line to the serial port
+        public static void sendSerial(string outputData, SerialPort mySerialPort)
         {
-            // Set a variable to the Documents path.
-            string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-            // Write the string array to a new file named "WriteLines.txt".
-            using (StreamWriter outputFile = File.AppendText(Path.Combine(docPath, "WriteLines.txt")))
-            {
-                outputFile.Write($"{cpuLatitude:+000.000000;-000.000000},");
-                outputFile.Write($"{cpuLongitude:+000.000000;-000.000000},");
-                outputFile.WriteLine($"{cpuAltitude:00000},L");
-            }
+            mySerialPort.Write(outputData);
         }
 
+        // get the local machine's IP to display at the start of the program
         public static string GetLocalIPAddress()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
@@ -141,5 +181,16 @@ namespace ClassMappr
             throw new Exception("No network adapters with an IPv4 address in the system!");
         }
 
+        // format the output to match the GC requirements
+        public static string formatInfo(double lat, double lon, double alt, string lev)
+        {
+
+            string linedata = $"{lat:+000.000000;-000.000000},";
+            linedata += $"{lon:+000.000000;-000.000000},";
+            linedata += $"{alt:00000},";
+            linedata += $"{lev}";
+            linedata += $"\n";
+            return linedata;
+        }
     }
 }
