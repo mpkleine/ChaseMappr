@@ -7,7 +7,7 @@ This program will receive ChaseMapper data via UDP from the RDZSonde devices, st
 This program is supplied as a ZIP file. Make a folder somewhere on your computer and unzip the ChaseMappr.zip file to that folder. Since this is a "server" program, the first time this program is executed, Windows asks your permission to let packets through the firewall system. You must check all three networks, domain, public, and local to let all packets through to the computer.
 
 <b>Configuration</b><br>
-Located in the installation folder is a configuration file that loads when the ChaseMappr program starts. This file is called appsetting.json with the following information.
+Located in the installation folder is a configuration file that loads when the ChaseMappr program starts. This file is called appsetting.json with the following information.<br>
 {<br>
   "udpPort": "11000",<br>
   "cpuLatitude": "35.379917",<br>
