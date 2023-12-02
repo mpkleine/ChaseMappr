@@ -17,7 +17,9 @@ Located in the installation folder is a configuration file that loads when the C
   "serialBaud": "9600",<br>
   "serialData": "8",<br>
   "serialParity": "None",<br>
-  "serialStop": "1"<br>
+  "serialStop": "1",<br>
+  "serialPacketPause": "1",<br>
+  "serialLocationPause": "60"<br>
 }<br>
 <b>udpPort</b> is the port that this program listens to.<br>
 <b>cpuLatitude</b> is the latitude of the LilyGO computer. Be sure to change this when you move around.<br>
@@ -28,6 +30,8 @@ Located in the installation folder is a configuration file that loads when the C
 <b>serialData</b> is the number of databits this system uses<br>
 <b>serialParity</b> is the parity this system uses. Options are Mark, Space, Even, Odd, and None. The default is None if an invalid entry is provided.<br>
 <b>serialStop</b> is the number of stop bits this system uses. Options are 1 or 2. The default is 1 if an invalid entry is provided.<br>
+<b>serialPacketPause</b> is the minimum number of seconds between the balloon packets on the serial output. This slows the typical 1 packet per second rate to a speed the location pointer can handle.<br>
+<b>serialLocationPause</b> is the minimum number of seconds between the location packets on the serial output. This varies the frequency the LilyGO location is sent.<br>
 
 <b>LilyGO Setup</b><br>
 From the Configuration panel, you need to enable the ChaseMapper function, insert the IP address of the computer running ChaseMappr, and enter the port number used for Chasemappr. 
