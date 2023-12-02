@@ -69,3 +69,16 @@ The Gordon Cooper project requires data in the following fixed text format. Char
 
 <b>Operation</b><br>
 To move the data through the system, configure the program and run ChaseMappr.exe from the command line. The program must stay in operation while the balloons are in flight.
+
+<b>Calibration Routine</b><br>
+If you add a command line parameter of "calibrate" this program runs through a calibration scheme to test the data connection to the pointing device. It will output:<br>
+a point north of this location and pause for 10 seconds<br>
+a point east and pause for 10 seconds<br>
+a point south and pause for 10 seconds<br>
+a point west and pause for 10 seconds<br>
+and finally point straight up. The program will then exit.<br>
+
+<b>Version History</b><br>
+Version 1.2.0 - 12/01/2023 - Added the calibrate routine.
+Version 1.1.0 - 12/01/2023 - Added the pause routines on serial data for both the packets and the location lines. Also added error trapping for serial port failures. A message states the serial port failed and all serial transmissions are canceled. Also added a display of all input parameters as the program starts.
+Version 1.0.0 - 11/30/2023 - Initial functional release.
