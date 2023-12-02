@@ -18,7 +18,7 @@ Located in the installation folder is a configuration file that loads when the C
   "serialData": "8",<br>
   "serialParity": "None",<br>
   "serialStop": "1",<br>
-  "serialPacketPause": "1",<br>
+  "serialPacketPause": "10",<br>
   "serialLocationPause": "60"<br>
 }<br>
 <b>udpPort</b> is the port that this program listens to.<br>
