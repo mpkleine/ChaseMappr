@@ -33,10 +33,7 @@ namespace ClassMappr
         public static void Main()
         {
             // Display the program header
-            Console.WriteLine("ChaseMappr: UDP Listener v 1.0.0");
-
-            // Initialize the counter to send out a cpu location every 10 balloon packets
-            int sendCounter = 0;
+            Console.WriteLine("    ChaseMappr: UDP Listener v 1.1.0");
 
             // Get the configuration information from the appsettings.json file
             // located in the same folder as the executable program
@@ -51,6 +48,10 @@ namespace ClassMappr
             string? serialData = configuration["serialData"];
             string? serialStop = configuration["serialStop"];
             string? serialParity = configuration["serialParity"];
+            string? serialPacketPause = configuration["serialPacketPause"];
+            int serialPacketPauseInt = (int)Convert.ToInt64(serialPacketPause);
+            string? locationPause = configuration["locationPause"];
+            int locationPauseInt = (int)Convert.ToInt64(locationPause);
             // Convert config info as required
             double cpuLatitude = Convert.ToDouble(cpuLat);
             double cpuLongitude = Convert.ToDouble(cpuLon);
@@ -58,15 +59,21 @@ namespace ClassMappr
             int cpuAltitude = Convert.ToInt32(cpuAlt);
 
             // Display IP/port number in use
-            Console.WriteLine("IP Address: " + GetLocalIPAddress());
-            Console.WriteLine("  UDP Port: " + udpPort);
-            Console.WriteLine("");
+            Console.WriteLine("    IP Address: " + GetLocalIPAddress());
+            Console.WriteLine("      UDP Port: " + udpPort);
+            Console.WriteLine("   Serial Port: " + serialPort + ": " +
+                serialBaud + "," +
+                serialData + "," +
+                serialParity + "," +
+                serialStop);
+            Console.WriteLine("  Packet Pause: " + serialPacketPause + " seconds");
+            Console.WriteLine("Location Pause: " + locationPause + " seconds");
 
             // Create the UDP socket
             UdpClient udpServer = new UdpClient(udpPort);
 
             // Open the Serial Port
-            SerialPort mySerialPort = new SerialPort();
+            SerialPort? mySerialPort = new SerialPort();
             mySerialPort.PortName = serialPort;
             mySerialPort.BaudRate = (int)Convert.ToInt64(serialBaud);
             mySerialPort.DataBits = Convert.ToInt32(serialData);
@@ -100,12 +107,30 @@ namespace ClassMappr
                     mySerialPort.StopBits = StopBits.One;
                     break;
             }
-            mySerialPort.Open();
+            try
+            {
+                mySerialPort.Open();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Serial Port was not found. No serial data will be sent.");
+                mySerialPort.Close();
+                mySerialPort = null;
+            }
+
+            // Calculate last send time for serial packet pause
+            DateTime lastSerialPacket = Convert.ToDateTime("2023-12-1 20:52:00");
+
+            Console.WriteLine("");
 
             // Send initial CPU Location
             sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
             sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
-            sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+            }
+            DateTime lastLocation = DateTime.Now;
 
             // Loop forever
             while (true)
@@ -125,19 +150,27 @@ namespace ClassMappr
                 sendFile(formatInfo(Convert.ToDouble(skypacket?.latitude),
                     Convert.ToDouble(skypacket?.longitude),
                     Convert.ToDouble(skypacket?.altitude), "$"));
-                sendSerial(formatInfo(Convert.ToDouble(skypacket?.latitude),
-                    Convert.ToDouble(skypacket?.longitude),
-                    Convert.ToDouble(skypacket?.altitude), "$"), mySerialPort);
+                if (DateTime.Now > lastSerialPacket.AddSeconds(serialPacketPauseInt))
+                {
+                    if (mySerialPort != null)
+                    {
+                        sendSerial(formatInfo(Convert.ToDouble(skypacket?.latitude),
+                            Convert.ToDouble(skypacket?.longitude),
+                            Convert.ToDouble(skypacket?.altitude), "$"), mySerialPort);
+                    }
+                    lastSerialPacket = DateTime.Now;
+                }
 
-                // send cpu location every 10 packets
-                if (sendCounter++ > 8)
+                // send cpu location if ready
+                if (DateTime.Now > lastLocation.AddSeconds(locationPauseInt))
                 {
                     sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
                     sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
-                    sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
-
-                    // clear the counter to start over again
-                    sendCounter = 0;
+                    if (mySerialPort != null)
+                    {
+                        sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+                    }
+                    lastLocation = DateTime.Now;
                 }
             }
         }
