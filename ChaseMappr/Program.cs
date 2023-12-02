@@ -30,10 +30,10 @@ namespace ClassMappr
     public class Program
     {
 
-        public static void Main()
+        public static void Main(string[] args)
         {
             // Display the program header
-            Console.WriteLine("    ChaseMappr: UDP Listener v 1.1.0");
+            Console.WriteLine("    ChaseMappr: UDP Listener v 1.2.0");
 
             // Get the configuration information from the appsettings.json file
             // located in the same folder as the executable program
@@ -123,6 +123,15 @@ namespace ClassMappr
 
             Console.WriteLine("");
 
+            // check command line for calibrate
+            for (int j = 0; j < args.Length; j++)
+            {
+                if (args[j].ToLower().Equals("calibrate"))
+                {
+                    Calibrate(cpuLatitude, cpuLongitude, cpuAltitude, mySerialPort);
+                }
+            }
+
             // Send initial CPU Location
             sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
             sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
@@ -173,6 +182,43 @@ namespace ClassMappr
                     lastLocation = DateTime.Now;
                 }
             }
+        }
+
+        // Send the calibration routine to the screen/file/serial
+        private static void Calibrate(double cpuLat, double cpuLon, double cpuAlt, SerialPort? mySerialPort)
+        {
+            Console.WriteLine("Calibrate Routine");
+            sendScreen("Sending LilyGO location: " + formatInfo(cpuLat,cpuLon,cpuAlt,"L"));
+            sendScreen("Pointing North - Waiting 10 seconds - " + formatInfo(cpuLat + .001, cpuLon, cpuAlt, "$"));
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLat + .001, cpuLon, cpuAlt, "$"), mySerialPort);
+            }
+            System.Threading.Thread.Sleep(10000);
+            sendScreen("Pointing East - Waiting 10 seconds - " + formatInfo(cpuLat, cpuLon + .001, cpuAlt, "$"));
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLat, cpuLon + .001, cpuAlt, "$"), mySerialPort);
+            }
+            System.Threading.Thread.Sleep(10000);
+            sendScreen("Pointing South - Waiting 10 seconds - " + formatInfo(cpuLat - .001, cpuLon, cpuAlt, "$"));
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLat - .001, cpuLon, cpuAlt, "$"), mySerialPort);
+            }
+            System.Threading.Thread.Sleep(10000);
+            sendScreen("Pointing West - Waiting 10 seconds - " + formatInfo(cpuLat, cpuLon - .001, cpuAlt, "$"));
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLat, cpuLon - .001, cpuAlt, "$"), mySerialPort);
+            }
+            System.Threading.Thread.Sleep(10000);
+            sendScreen("Pointing Up - " + formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$"));
+            if (mySerialPort != null)
+            {
+                sendSerial(formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$"), mySerialPort);
+            }
+            Environment.Exit(0);
         }
 
         // send the line to the screen
