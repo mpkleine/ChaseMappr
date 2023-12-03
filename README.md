@@ -79,6 +79,7 @@ a point west and pause for 10 seconds<br>
 and finally point straight up. The program will then exit.<br>
 
 <b>Version History</b><br>
+<b>Version 1.3.0</b> - 12/03/2023 - Added the date/time to the output streams, screen/file/serial.<br>
 <b>Version 1.2.0</b> - 12/01/2023 - Added the calibrate routine.<br>
 <b>Version 1.1.0</b> - 12/01/2023 - Added the pause routines on serial data for both the packets and the location lines. Also added error trapping for serial port failures. A message states the serial port failed and all serial transmissions are canceled. Also added a display of all input parameters as the program starts.<br>
 <b>Version 1.0.0</b> - 11/30/2023 - Initial functional release.
