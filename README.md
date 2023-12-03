@@ -33,6 +33,7 @@ Located in the installation folder is a configuration file that loads when the C
 <b>serialStop</b> is the number of stop bits this system uses. Options are 1 or 2. The default is 1 if an invalid entry is provided.<br>
 <b>serialPacketPause</b> is the minimum number of seconds between the balloon packets on the serial output. This slows the typical 1 packet per second rate to a speed the location pointer can handle.<br>
 <b>locationPause</b> is the minimum number of seconds between the location packets on the output. This varies the frequency the LilyGO location is sent.<br>
+<b>eolChar</b> is an end-of-line character parameter for the serial output. You can specify newline - "\n", carriage return - "\r", or newline and carriage return - "\n\r" as the end-of-line character.
 
 <b>LilyGO Setup</b><br>
 From the Configuration panel, you need to enable the ChaseMapper function, insert the IP address of the computer running ChaseMappr, and enter the port number used for Chasemappr. 
