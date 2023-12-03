@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.IO.Ports;
+using System.Transactions;
 
 // Program to listen on a UDP port for CHASEMAPPER UDP packets from the LilyGO RDZSonde device
 // and write them to a file.
@@ -33,7 +34,7 @@ namespace ClassMappr
         public static void Main(string[] args)
         {
             // Display the program header
-            Console.WriteLine("    ChaseMappr: UDP Listener v 1.2.0");
+            Console.WriteLine("    ChaseMappr: UDP Listener v 1.3.0");
 
             // Get the configuration information from the appsettings.json file
             // located in the same folder as the executable program
@@ -52,11 +53,22 @@ namespace ClassMappr
             int serialPacketPauseInt = (int)Convert.ToInt64(serialPacketPause);
             string? locationPause = configuration["locationPause"];
             int locationPauseInt = (int)Convert.ToInt64(locationPause);
+            string? eolChar = configuration["eolChar"];
+
             // Convert config info as required
             double cpuLatitude = Convert.ToDouble(cpuLat);
             double cpuLongitude = Convert.ToDouble(cpuLon);
             int udpPort = Convert.ToInt32(udpP);
             int cpuAltitude = Convert.ToInt32(cpuAlt);
+
+            // Sanity check end of line character
+            if (!eolChar.Equals("\n") &&
+                !eolChar.Equals("\r") &&
+                !eolChar.Equals("\n\r") &&
+                !eolChar.Equals("\r\n"))
+            {
+                eolChar = "\n";
+            }
 
             // Display IP/port number in use
             Console.WriteLine("    IP Address: " + GetLocalIPAddress());
@@ -128,16 +140,17 @@ namespace ClassMappr
             {
                 if (args[j].ToLower().Equals("calibrate"))
                 {
-                    Calibrate(cpuLatitude, cpuLongitude, cpuAltitude, mySerialPort);
+                    Calibrate(cpuLatitude, cpuLongitude, cpuAltitude, mySerialPort, eolChar);
                 }
             }
 
             // Send initial CPU Location
-            sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
-            sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+            string outputLineL = formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L");
+            sendScreen(outputLineL);
+            sendFile(outputLineL);
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+                sendSerial(outputLineL, mySerialPort, eolChar);
             }
             DateTime lastLocation = DateTime.Now;
 
@@ -153,19 +166,16 @@ namespace ClassMappr
                 Packet? skypacket = JsonSerializer.Deserialize<Packet>(someString);
 
                 // output the properly formatted balloon packet to the screen, log file, and serial port
-                sendScreen(formatInfo(Convert.ToDouble(skypacket?.latitude),
+                string outputLineD = formatInfo(Convert.ToDouble(skypacket?.latitude),
                     Convert.ToDouble(skypacket?.longitude),
-                    Convert.ToDouble(skypacket?.altitude), "$"));
-                sendFile(formatInfo(Convert.ToDouble(skypacket?.latitude),
-                    Convert.ToDouble(skypacket?.longitude),
-                    Convert.ToDouble(skypacket?.altitude), "$"));
+                    Convert.ToDouble(skypacket?.altitude), "$");
+                sendScreen(outputLineD);
+                sendFile(outputLineD);
                 if (DateTime.Now > lastSerialPacket.AddSeconds(serialPacketPauseInt))
                 {
                     if (mySerialPort != null)
                     {
-                        sendSerial(formatInfo(Convert.ToDouble(skypacket?.latitude),
-                            Convert.ToDouble(skypacket?.longitude),
-                            Convert.ToDouble(skypacket?.altitude), "$"), mySerialPort);
+                        sendSerial(outputLineD, mySerialPort, eolChar);
                     }
                     lastSerialPacket = DateTime.Now;
                 }
@@ -173,11 +183,12 @@ namespace ClassMappr
                 // send cpu location if ready
                 if (DateTime.Now > lastLocation.AddSeconds(locationPauseInt))
                 {
-                    sendScreen(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
-                    sendFile(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"));
+                    outputLineL = formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L");
+                    sendScreen(outputLineL);
+                    sendFile(outputLineL);
                     if (mySerialPort != null)
                     {
-                        sendSerial(formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L"), mySerialPort);
+                        sendSerial(outputLineL, mySerialPort, eolChar);
                     }
                     lastLocation = DateTime.Now;
                 }
@@ -185,46 +196,62 @@ namespace ClassMappr
         }
 
         // Send the calibration routine to the screen/file/serial
-        private static void Calibrate(double cpuLat, double cpuLon, double cpuAlt, SerialPort? mySerialPort)
+        private static void Calibrate(double cpuLat, double cpuLon, double cpuAlt, SerialPort? mySerialPort, string eolChar)
         {
+            Double delta = .001;
             Console.WriteLine("Calibrate Routine");
-            sendScreen("Sending LilyGO location: " + formatInfo(cpuLat,cpuLon,cpuAlt,"L"));
-            sendScreen("Pointing North - Waiting 10 seconds - " + formatInfo(cpuLat + .001, cpuLon, cpuAlt, "$"));
+            sendScreen("Sending LilyGO location: " + formatInfo(cpuLat, cpuLon, cpuAlt, "L"));
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLat + .001, cpuLon, cpuAlt, "$"), mySerialPort);
+                sendSerial(formatInfo(cpuLat, cpuLon, cpuAlt, "L"), mySerialPort, eolChar);
+            }
+
+            string outputLineD = formatInfo(cpuLat + delta, cpuLon, cpuAlt, "$");
+            sendScreen("Pointing North - Waiting 10 seconds - " + outputLineD);
+            if (mySerialPort != null)
+            {
+                sendSerial(outputLineD, mySerialPort, eolChar);
             }
             System.Threading.Thread.Sleep(10000);
-            sendScreen("Pointing East - Waiting 10 seconds - " + formatInfo(cpuLat, cpuLon + .001, cpuAlt, "$"));
+            outputLineD = formatInfo(cpuLat, cpuLon + delta, cpuAlt, "$");
+            sendScreen("Pointing East - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLat, cpuLon + .001, cpuAlt, "$"), mySerialPort);
+                sendSerial(outputLineD, mySerialPort, eolChar);
             }
             System.Threading.Thread.Sleep(10000);
-            sendScreen("Pointing South - Waiting 10 seconds - " + formatInfo(cpuLat - .001, cpuLon, cpuAlt, "$"));
+
+            outputLineD = formatInfo(cpuLat - delta, cpuLon, cpuAlt, "$");
+            sendScreen("Pointing South - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLat - .001, cpuLon, cpuAlt, "$"), mySerialPort);
+                sendSerial(outputLineD, mySerialPort, eolChar);
             }
             System.Threading.Thread.Sleep(10000);
-            sendScreen("Pointing West - Waiting 10 seconds - " + formatInfo(cpuLat, cpuLon - .001, cpuAlt, "$"));
+
+            outputLineD = formatInfo(cpuLat, cpuLon - delta, cpuAlt, "$");
+            sendScreen("Pointing West - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLat, cpuLon - .001, cpuAlt, "$"), mySerialPort);
+                sendSerial(outputLineD, mySerialPort, eolChar);
             }
             System.Threading.Thread.Sleep(10000);
-            sendScreen("Pointing Up - " + formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$"));
+
+            outputLineD = formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$");
+            sendScreen("Pointing Up - " + outputLineD);
             if (mySerialPort != null)
             {
-                sendSerial(formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$"), mySerialPort);
+                sendSerial(outputLineD, mySerialPort, eolChar);
             }
+
+            // Exit the program
             Environment.Exit(0);
         }
 
         // send the line to the screen
         private static void sendScreen(string formattedString)
         {
-            Console.Write($"{formattedString}");
+            Console.WriteLine($"{formattedString}");
         }
 
         // send the line to the log file
@@ -236,14 +263,15 @@ namespace ClassMappr
             // Write the string array to a new file named "ChaseMappr.txt".
             using (StreamWriter outputFile = File.AppendText(Path.Combine(docPath, "ChaseMappr.txt")))
             {
-                outputFile.Write($"{formattedString}");
+                outputFile.WriteLine($"{formattedString}");
             }
         }
 
         // send the line to the serial port
-        public static void sendSerial(string outputData, SerialPort mySerialPort)
+        public static void sendSerial(string outputData, SerialPort mySerialPort, string eolChar)
         {
-            mySerialPort.Write(outputData);
+            byte[] bufferData = System.Text.Encoding.UTF8.GetBytes(outputData + eolChar);
+            mySerialPort.Write(bufferData, 0, bufferData.Length);
         }
 
         // get the local machine's IP to display at the start of the program
@@ -260,15 +288,14 @@ namespace ClassMappr
             throw new Exception("No network adapters with an IPv4 address in the system!");
         }
 
-        // format the output to match the GC requirements
+        // format the output to match the Gordon Cooper requirements
         public static string formatInfo(double lat, double lon, double alt, string lev)
         {
-
             string linedata = $"{lat:+000.000000;-000.000000},";
             linedata += $"{lon:+000.000000;-000.000000},";
             linedata += $"{alt:00000},";
-            linedata += $"{lev}";
-            linedata += $"\n";
+            linedata += $"{lev},";
+            linedata += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}";
             return linedata;
         }
     }
