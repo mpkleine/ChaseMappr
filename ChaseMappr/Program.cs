@@ -4,6 +4,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.IO.Ports;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Runtime.InteropServices;
 
 // Program to listen on a UDP port for CHASEMAPPER UDP packets from the LilyGO RDZSonde device
 // and write them to a file.
@@ -33,7 +35,7 @@ namespace ClassMappr
         public static void Main(string[] args)
         {
             // Display the program header
-            Console.WriteLine("    ChaseMappr: UDP Listener v 1.4.0");
+            Console.WriteLine("    ChaseMappr: UDP Listener v 1.5.0");
 
             // Get the configuration information from the appsettings.json file
             // located in the same folder as the executable program
@@ -208,7 +210,7 @@ namespace ClassMappr
             // Display header
             Console.WriteLine("File Replay -- Documents\\ChaseMapprReplay.txt");
 
-            String? line;
+            string? line;
             int ms = 0;
             DateTime lastSerialReplay = Convert.ToDateTime("2023-12-1 20:52:00");
 
@@ -222,16 +224,19 @@ namespace ClassMappr
 
                 // Previous Time
                 DateTime previousSend = DateTime.Now;
-
+                double locationLat = 0;
+                double locationLon = 0;
+                double balloonLat = 0;
+                double balloonLon = 0;
+                double distance = 0;
+                double angle = 0;
+                
                 //Read the first line of text
                 line = sr.ReadLine();
 
                 //Continue to read until you reach end of file
                 while (line != null)
                 {
-                    // write the line to the screen
-                    Console.WriteLine(line);
-
                     // calculate the time of the current packet
                     DateTime dt1 = DateTime.ParseExact(line.Substring(32, 23), "yyyy-MM-dd HH:mm:ss.fff", null);
                     TimeSpan span = dt1 - previousSend;
@@ -241,8 +246,11 @@ namespace ClassMappr
 
                     // send out location to the serial port
                     string lineType = line.Substring(30, 1);
+
                     if (lineType.Equals("L"))
                     {
+                        locationLat = Convert.ToDouble(line.Substring(0, 11));
+                        locationLon = Convert.ToDouble(line.Substring(12, 11));
                         // Send this out LilyGO location out the serial line if it's open
                         if (mySerialPort != null)
                         {
@@ -253,6 +261,10 @@ namespace ClassMappr
                     // handle the replay pause for the $ packets
                     if (lineType.Equals("$"))
                     {
+                        balloonLat = Convert.ToDouble(line.Substring(0, 11));
+                        balloonLon = Convert.ToDouble(line.Substring(12, 11));
+                        angle = angleBetweenEarthCoordinates(locationLat, locationLon, balloonLat, balloonLon);
+                        distance = distanceInKmBetweenEarthCoordinates(locationLat, locationLon, balloonLat, balloonLon);
                         if (dt1 > lastSerialReplay.AddSeconds(serialReplayPauseInt))
                         {
                             // Send this out the serial line if it's open
@@ -269,6 +281,9 @@ namespace ClassMappr
                     {
                         ms = 0;
                     }
+
+                    // write the line to the screen
+                    Console.WriteLine(line + " " + $"{distance:000.0000}" + " " + $"{angle:+000.000000;-000.000000}");
 
                     // Pause the packets to match previous timing
                     System.Threading.Thread.Sleep(ms);
@@ -398,5 +413,41 @@ namespace ClassMappr
             linedata += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}";
             return linedata;
         }
+
+        public static double degreesToRadians(double degrees)
+        {
+            return degrees * Math.PI / 180;
+        }
+
+        public static double radiansToDegrees(double radians)
+        {
+            return radians * 180 / Math.PI;
+        }
+
+        public static double distanceInKmBetweenEarthCoordinates(double lat1, double lon1, double lat2, double lon2)
+        {
+            double earthRadiusKm = 6371;
+
+            double dLat = degreesToRadians(lat2 - lat1);
+            double dLon = degreesToRadians(lon2 - lon1);
+
+            lat1 = degreesToRadians(lat1);
+            lat2 = degreesToRadians(lat2);
+
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(lat1) * Math.Cos(lat2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return earthRadiusKm * c;
+        }
+
+        public static double angleBetweenEarthCoordinates(double lat1, double lon1, double lat2, double lon2)
+        {
+            double dy = lat2 - lat1;
+            double dx = Math.Cos(degreesToRadians(lat1)) * (lon2 - lon1);
+            double angle = Math.Atan2(dy, dx);
+
+            return radiansToDegrees(angle);
+        }
+
     }
 }
