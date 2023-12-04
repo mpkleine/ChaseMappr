@@ -20,7 +20,8 @@ Located in the installation folder is a configuration file that loads when the C
   "serialStop": "1",<br>
   "serialPacketPause": "10",<br>
   "locationPause": "60",<br>
-  "eolChar": "\n"<br>
+  "eolChar": "\n",<br>
+  "serialReplayPause": "5"<br>
 }<br>
 <b>udpPort</b> is the port that this program listens to.<br>
 <b>cpuLatitude</b> is the latitude of the LilyGO computer. Be sure to change this when you move around.<br>
@@ -33,7 +34,8 @@ Located in the installation folder is a configuration file that loads when the C
 <b>serialStop</b> is the number of stop bits this system uses. Options are 1 or 2. The default is 1 if an invalid entry is provided.<br>
 <b>serialPacketPause</b> is the minimum number of seconds between the balloon packets on the serial output. This slows the typical 1 packet per second rate to a speed the location pointer can handle.<br>
 <b>locationPause</b> is the minimum number of seconds between the location packets on the output. This varies the frequency the LilyGO location is sent.<br>
-<b>eolChar</b> is an end-of-line character parameter for the serial output. You can specify newline - "\n", carriage return - "\r", or newline and carriage return - "\n\r" as the end-of-line character.
+<b>eolChar</b> is an end-of-line character parameter for the serial output. You can specify newline - "\n", carriage return - "\r", or newline and carriage return - "\n\r" as the end-of-line character.<br>
+<b>serialReplayPause</b> is the minimum number of seconds between the balloon packets on the serial output during a replay run. This slows the typical 1 packet per second rate to a speed the location pointer can handle.<br>
 
 <b>LilyGO Setup</b><br>
 From the Configuration panel, you need to enable the ChaseMapper function, insert the IP address of the computer running ChaseMappr, and enter the port number used for Chasemappr. 
@@ -73,14 +75,18 @@ The Gordon Cooper project requires data in the following fixed text format. Char
 To move the data through the system, configure the program and run ChaseMappr.exe from the command line. The program must stay in operation while the balloons are in flight.
 
 <b>Calibration Routine</b><br>
-If you add a command line parameter of "calibrate" this program runs through a calibration scheme to test the data connection to the pointing device. It will output:<br>
+If you add a command line parameter of "calibrate" this program runs through a calibration scheme to test the data connection of the pointing device. It will output:<br>
 a point north of this location and pause for 10 seconds<br>
 a point east and pause for 10 seconds<br>
 a point south and pause for 10 seconds<br>
 a point west and pause for 10 seconds<br>
 and finally point straight up. The program will then exit.<br>
 
+<b>Replay Routine</b><br>
+If you add a command line parameter of "replay" this program runs through a replay routine to send a past balloon flight to the serial connection of the pointing device. It will output all of the LilyGO and balloon locations for the run stored in the ChaseMapprReplay.txt file located in the documents folder. Note that there is a separate replay pause variable so you can change the replay speed.<br>
+
 <b>Version History</b><br>
+<b>Version 1.4.0</b> - 12/3/2023 - Added a replay feature that lets a user replay a past balloon flight.<br>
 <b>Version 1.3.0</b> - 12/03/2023 - Added the date/time to the output streams, screen/file/serial. Added an end-of-line character parameter to the configuration file. The user can specify newline - "\n", carriage return - "\r", or newline and carriage return - "\n\r" end of line character.<br>
 <b>Version 1.2.0</b> - 12/01/2023 - Added the calibrate routine.<br>
 <b>Version 1.1.0</b> - 12/01/2023 - Added the pause routines on serial data for both the packets and the location lines. Also added error trapping for serial port failures. A message states the serial port failed and all serial transmissions are canceled. Also added a display of all input parameters as the program starts.<br>
