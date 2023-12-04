@@ -139,7 +139,7 @@ namespace ClassMappr
 
             Console.WriteLine("");
 
-            // check command line for calibrate
+            // check command line for calibrate or replay
             for (int j = 0; j < args.Length; j++)
             {
                 if (args[j].ToLower().Equals("calibrate"))
@@ -155,6 +155,8 @@ namespace ClassMappr
 
             // Send initial CPU Location
             string outputLineL = formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L");
+            double locationLatitude = cpuLatitude;
+            double locationLongitude = cpuLongitude;
             sendScreen(outputLineL);
             sendFile(outputLineL);
             if (mySerialPort != null)
@@ -174,11 +176,18 @@ namespace ClassMappr
                 // Deserialize the JSON packet received into the skypacket class
                 Packet? skypacket = JsonSerializer.Deserialize<Packet>(someString);
 
+                double balloonLatitude = Convert.ToDouble(skypacket?.latitude);
+                double balloonLongitude = Convert.ToDouble(skypacket?.longitude);
+                double angle = angleBetweenEarthCoordinates(balloonLatitude, balloonLongitude, 
+                    locationLatitude, locationLongitude);
+                double distance = distanceInKmBetweenEarthCoordinates(balloonLatitude, balloonLongitude,
+                    locationLatitude, locationLongitude);
+
                 // output the properly formatted balloon packet to the screen, log file, and serial port
-                string outputLineD = formatInfo(Convert.ToDouble(skypacket?.latitude),
-                    Convert.ToDouble(skypacket?.longitude),
+                string outputLineD = formatInfo(balloonLatitude,
+                    balloonLongitude,
                     Convert.ToDouble(skypacket?.altitude), "$");
-                sendScreen(outputLineD);
+                sendScreen(outputLineD + "," + $"{distance:000.0000}" + "," + $"{angle:+000.000000;-000.000000}");
                 sendFile(outputLineD);
                 if (DateTime.Now > lastSerialPacket.AddSeconds(serialPacketPauseInt))
                 {
@@ -199,6 +208,8 @@ namespace ClassMappr
                     {
                         sendSerial(outputLineL, mySerialPort, eolChar);
                     }
+                    locationLatitude = cpuLatitude;
+                    locationLongitude = cpuLongitude;
                     lastLocation = DateTime.Now;
                 }
             }
@@ -283,7 +294,7 @@ namespace ClassMappr
                     }
 
                     // write the line to the screen
-                    Console.WriteLine(line + " " + $"{distance:000.0000}" + " " + $"{angle:+000.000000;-000.000000}");
+                    Console.WriteLine(line + "," + $"{distance:000.0000}" + "," + $"{angle:+000.000000;-000.000000}");
 
                     // Pause the packets to match previous timing
                     System.Threading.Thread.Sleep(ms);
