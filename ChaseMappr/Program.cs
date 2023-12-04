@@ -4,7 +4,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.IO.Ports;
-using System.Transactions;
 
 // Program to listen on a UDP port for CHASEMAPPER UDP packets from the LilyGO RDZSonde device
 // and write them to a file.
@@ -34,7 +33,7 @@ namespace ClassMappr
         public static void Main(string[] args)
         {
             // Display the program header
-            Console.WriteLine("    ChaseMappr: UDP Listener v 1.3.0");
+            Console.WriteLine("    ChaseMappr: UDP Listener v 1.4.0");
 
             // Get the configuration information from the appsettings.json file
             // located in the same folder as the executable program
@@ -54,6 +53,8 @@ namespace ClassMappr
             string? locationPause = configuration["locationPause"];
             int locationPauseInt = (int)Convert.ToInt64(locationPause);
             string? eolChar = configuration["eolChar"];
+            string? serialReplayPause = configuration["serialReplayPause"];
+            int serialReplayPauseInt = (int)Convert.ToInt64(serialReplayPause);
 
             // Convert config info as required
             double cpuLatitude = Convert.ToDouble(cpuLat);
@@ -80,6 +81,7 @@ namespace ClassMappr
                 serialStop);
             Console.WriteLine("  Packet Pause: " + serialPacketPause + " seconds");
             Console.WriteLine("Location Pause: " + locationPause + " seconds");
+            Console.WriteLine("  Replay Pause: " + serialReplayPauseInt + " seconds");
 
             // Create the UDP socket
             UdpClient udpServer = new UdpClient(udpPort);
@@ -123,7 +125,7 @@ namespace ClassMappr
             {
                 mySerialPort.Open();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Console.WriteLine("Serial Port was not found. No serial data will be sent.");
                 mySerialPort.Close();
@@ -141,6 +143,11 @@ namespace ClassMappr
                 if (args[j].ToLower().Equals("calibrate"))
                 {
                     Calibrate(cpuLatitude, cpuLongitude, cpuAltitude, mySerialPort, eolChar);
+                }
+
+                if (args[j].ToLower().Equals("replay"))
+                {
+                    Replay(mySerialPort, eolChar, serialReplayPauseInt);
                 }
             }
 
@@ -193,6 +200,99 @@ namespace ClassMappr
                     lastLocation = DateTime.Now;
                 }
             }
+        }
+
+        // Send the contents of ChaseMapprReplay.txt to the screen and serial outputs
+        private static void Replay(SerialPort? mySerialPort, string eolChar, int serialReplayPauseInt)
+        {
+            // Display header
+            Console.WriteLine("File Replay -- Documents\\ChaseMapprReplay.txt");
+
+            String? line;
+            int ms = 0;
+            DateTime lastSerialReplay = Convert.ToDateTime("2023-12-1 20:52:00");
+
+            try
+            {
+                // Set a variable to the Documents path.
+                string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                //Pass the file path and file name to the StreamReader constructor
+                StreamReader sr = new StreamReader(Path.Combine(docPath, "ChaseMapprReplay.txt"));
+
+                // Previous Time
+                DateTime previousSend = DateTime.Now;
+
+                //Read the first line of text
+                line = sr.ReadLine();
+
+                //Continue to read until you reach end of file
+                while (line != null)
+                {
+                    // write the line to the screen
+                    Console.WriteLine(line);
+
+                    // calculate the time of the current packet
+                    DateTime dt1 = DateTime.ParseExact(line.Substring(32, 23), "yyyy-MM-dd HH:mm:ss.fff", null);
+                    TimeSpan span = dt1 - previousSend;
+
+                    // calculate the milliseconds 
+                    ms = (int)span.TotalMilliseconds;
+
+                    // send out location to the serial port
+                    string lineType = line.Substring(30, 1);
+                    if (lineType.Equals("L"))
+                    {
+                        // Send this out LilyGO location out the serial line if it's open
+                        if (mySerialPort != null)
+                        {
+                            sendSerial(line, mySerialPort, eolChar);
+                        }
+                    }
+
+                    // handle the replay pause for the $ packets
+                    if (lineType.Equals("$"))
+                    {
+                        if (dt1 > lastSerialReplay.AddSeconds(serialReplayPauseInt))
+                        {
+                            // Send this out the serial line if it's open
+                            if (mySerialPort != null)
+                            {
+                                sendSerial(line, mySerialPort, eolChar);
+                            }
+                            lastSerialReplay = dt1;
+                        }
+                    }
+
+                    // zero out the negative times (first line)
+                    if (ms < 0)
+                    {
+                        ms = 0;
+                    }
+
+                    // Pause the packets to match previous timing
+                    System.Threading.Thread.Sleep(ms);
+                    previousSend = dt1;
+
+                    //Read the next line
+                    line = sr.ReadLine();
+                }
+
+                //close the file
+                sr.Close();
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception: " + e.Message);
+            }
+            finally
+            {
+                Console.WriteLine("Ending Replay Flight.");
+            }
+
+            // Exit the program
+            Environment.Exit(0);
         }
 
         // Send the calibration routine to the screen/file/serial
