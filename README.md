@@ -73,7 +73,7 @@ a point west and pause for 10 seconds<br>
 and finally point straight up. The program will then exit.<br>
 
 <b>Replay Routine</b><br>
-If you add a command line parameter of "replay" this program runs through a replay routine to send a past balloon flight to the serial connection of the pointing device. It will output all of the LilyGO and balloon locations for the run stored in the ChaseMapprReplay.txt file located in the documents folder. Note that there is a separate replay pause variable so you can change the replay speed.<br>
+If you add a command line parameter of "replay" this program runs through a replay routine to send a past balloon flight to the serial connection of the pointing device. It will output all of the LilyGO and balloon locations for the run stored in the ChaseMapprReplay.txt file located in the documents folder. Note that there is a separate replay pause variable so you can change the pause between packets sent to the serial port on replay.<br>
 
 <b>Version History</b><br>
 <b>Version 1.5.0</b> - 12/4/2023 - Added the distance in km and direction in degrees (east is 0 degrees) from the LilyGO location to the balloon.<br>
