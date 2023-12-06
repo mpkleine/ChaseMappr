@@ -31,7 +31,6 @@ namespace ClassMappr
 
     public class Program
     {
-
         public static void Main(string[] args)
         {
             // Display the program header
@@ -153,7 +152,7 @@ namespace ClassMappr
                 }
             }
 
-            // Send initial CPU Location
+            // Send initial LilyGO Location
             string outputLineL = formatInfo(cpuLatitude, cpuLongitude, cpuAltitude, "L");
             double locationLatitude = cpuLatitude;
             double locationLongitude = cpuLongitude;
@@ -178,7 +177,7 @@ namespace ClassMappr
 
                 double balloonLatitude = Convert.ToDouble(skypacket?.latitude);
                 double balloonLongitude = Convert.ToDouble(skypacket?.longitude);
-                double angle = angleBetweenEarthCoordinates(balloonLatitude, balloonLongitude, 
+                double angle = angleBetweenEarthCoordinates(balloonLatitude, balloonLongitude,
                     locationLatitude, locationLongitude);
                 double distance = distanceInKmBetweenEarthCoordinates(balloonLatitude, balloonLongitude,
                     locationLatitude, locationLongitude);
@@ -218,11 +217,12 @@ namespace ClassMappr
         // Send the contents of ChaseMapprReplay.txt to the screen and serial outputs
         private static void Replay(SerialPort? mySerialPort, string eolChar, int serialReplayPauseInt)
         {
-            // Display header
+            // Display the file name used
             Console.WriteLine("File Replay -- Documents\\ChaseMapprReplay.txt");
 
+            // define the variables
             string? line;
-            int ms = 0;
+            int ms;
             DateTime lastSerialReplay = Convert.ToDateTime("2023-12-1 20:52:00");
 
             try
@@ -230,7 +230,7 @@ namespace ClassMappr
                 // Set a variable to the Documents path.
                 string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-                //Pass the file path and file name to the StreamReader constructor
+                // Pass the file path and file name to the StreamReader constructor
                 StreamReader sr = new StreamReader(Path.Combine(docPath, "ChaseMapprReplay.txt"));
 
                 // Previous Time
@@ -241,27 +241,29 @@ namespace ClassMappr
                 double balloonLon = 0;
                 double distance = 0;
                 double angle = 0;
-                
-                //Read the first line of text
+
+                // Read the first line of text
                 line = sr.ReadLine();
 
-                //Continue to read until you reach end of file
+                // Continue to read until you reach end of file
                 while (line != null)
                 {
                     // calculate the time of the current packet
                     DateTime dt1 = DateTime.ParseExact(line.Substring(32, 23), "yyyy-MM-dd HH:mm:ss.fff", null);
-                    TimeSpan span = dt1 - previousSend;
 
-                    // calculate the milliseconds 
+                    // calculate the time span from the previous packet to this one (to determine wait time)
+                    TimeSpan span = dt1 - previousSend;
                     ms = (int)span.TotalMilliseconds;
 
-                    // send out location to the serial port
+                    // Obtain the line type ("L" = LilyGO location -- "$" = balloon transaction)
                     string lineType = line.Substring(30, 1);
 
+                    // handle the LilyGO location record
                     if (lineType.Equals("L"))
                     {
                         locationLat = Convert.ToDouble(line.Substring(0, 11));
                         locationLon = Convert.ToDouble(line.Substring(12, 11));
+
                         // Send this out LilyGO location out the serial line if it's open
                         if (mySerialPort != null)
                         {
@@ -269,13 +271,15 @@ namespace ClassMappr
                         }
                     }
 
-                    // handle the replay pause for the $ packets
+                    // handle the "$" balloon packets
                     if (lineType.Equals("$"))
                     {
                         balloonLat = Convert.ToDouble(line.Substring(0, 11));
                         balloonLon = Convert.ToDouble(line.Substring(12, 11));
+                        // calculate the distance and angle to the balloon
                         angle = angleBetweenEarthCoordinates(locationLat, locationLon, balloonLat, balloonLon);
                         distance = distanceInKmBetweenEarthCoordinates(locationLat, locationLon, balloonLat, balloonLon);
+                        // check to see if we should skip this transaction due to pause
                         if (dt1 > lastSerialReplay.AddSeconds(serialReplayPauseInt))
                         {
                             // Send this out the serial line if it's open
@@ -296,18 +300,19 @@ namespace ClassMappr
                     // write the line to the screen
                     Console.WriteLine(line + "," + $"{distance:000.0000}" + "," + $"{angle:+000.000000;-000.000000}");
 
-                    // Pause the packets to match previous timing
+                    // sleep to delay for the next packet
                     System.Threading.Thread.Sleep(ms);
                     previousSend = dt1;
 
-                    //Read the next line
+                    // Read the next line
                     line = sr.ReadLine();
                 }
 
-                //close the file
+                // close the file
                 sr.Close();
-
             }
+
+            // send an error if this blew up
             catch (Exception e)
             {
                 Console.WriteLine("Exception: " + e.Message);
@@ -322,8 +327,15 @@ namespace ClassMappr
         }
 
         // Send the calibration routine to the screen/file/serial
+        // This first sends the LilyGO location.
+        // Then a point north of the location and it waits for 10 seconds.
+        // Then a point east of the location and it waits for 10 seconds.
+        // Then a point south of the location and it waits for 10 seconds.
+        // Then a point west of the location and it waits for 10 seconds.
+        // Then a point 1000 meters above the LilyGO location.
         private static void Calibrate(double cpuLat, double cpuLon, double cpuAlt, SerialPort? mySerialPort, string eolChar)
         {
+            // this delta is how far away from the LilyGO the calibration point should be
             Double delta = .001;
             Console.WriteLine("Calibrate Routine");
             sendScreen("Sending LilyGO location: " + formatInfo(cpuLat, cpuLon, cpuAlt, "L"));
@@ -332,6 +344,7 @@ namespace ClassMappr
                 sendSerial(formatInfo(cpuLat, cpuLon, cpuAlt, "L"), mySerialPort, eolChar);
             }
 
+            // Send the point north of the location
             string outputLineD = formatInfo(cpuLat + delta, cpuLon, cpuAlt, "$");
             sendScreen("Pointing North - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
@@ -339,6 +352,8 @@ namespace ClassMappr
                 sendSerial(outputLineD, mySerialPort, eolChar);
             }
             System.Threading.Thread.Sleep(10000);
+
+            // Send the point east of the location
             outputLineD = formatInfo(cpuLat, cpuLon + delta, cpuAlt, "$");
             sendScreen("Pointing East - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
@@ -347,6 +362,7 @@ namespace ClassMappr
             }
             System.Threading.Thread.Sleep(10000);
 
+            // Send the point south of the location
             outputLineD = formatInfo(cpuLat - delta, cpuLon, cpuAlt, "$");
             sendScreen("Pointing South - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
@@ -355,6 +371,7 @@ namespace ClassMappr
             }
             System.Threading.Thread.Sleep(10000);
 
+            // Send the point west of the location
             outputLineD = formatInfo(cpuLat, cpuLon - delta, cpuAlt, "$");
             sendScreen("Pointing West - Waiting 10 seconds - " + outputLineD);
             if (mySerialPort != null)
@@ -363,6 +380,7 @@ namespace ClassMappr
             }
             System.Threading.Thread.Sleep(10000);
 
+            // Send the point directly above the location 
             outputLineD = formatInfo(cpuLat, cpuLon, cpuAlt + 1000, "$");
             sendScreen("Pointing Up - " + outputLineD);
             if (mySerialPort != null)
@@ -414,7 +432,7 @@ namespace ClassMappr
             throw new Exception("No network adapters with an IPv4 address in the system!");
         }
 
-        // format the output to match the Gordon Cooper requirements
+        // format the output line to match the Gordon Cooper requirements
         public static string formatInfo(double lat, double lon, double alt, string lev)
         {
             string linedata = $"{lat:+000.000000;-000.000000},";
@@ -425,16 +443,19 @@ namespace ClassMappr
             return linedata;
         }
 
+        // change degrees to radians
         public static double degreesToRadians(double degrees)
         {
             return degrees * Math.PI / 180;
         }
 
+        // change radians to degrees
         public static double radiansToDegrees(double radians)
         {
             return radians * 180 / Math.PI;
         }
 
+        // calculate the distance between the LilyGO and the balloon in kilometers
         public static double distanceInKmBetweenEarthCoordinates(double lat1, double lon1, double lat2, double lon2)
         {
             double earthRadiusKm = 6371;
@@ -451,6 +472,7 @@ namespace ClassMappr
             return earthRadiusKm * c;
         }
 
+        // routine to calculate the angle between the LilyGO and the balloon (0 is east +90 is north -90 is south)
         public static double angleBetweenEarthCoordinates(double lat1, double lon1, double lat2, double lon2)
         {
             double dy = lat2 - lat1;
@@ -459,6 +481,5 @@ namespace ClassMappr
 
             return radiansToDegrees(angle);
         }
-
     }
 }
