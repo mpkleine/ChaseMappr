@@ -62,7 +62,7 @@ The Gordon Cooper project requires data in the following fixed text format. Char
 +034.805390,-096.083090,03285,$,2023-12-04 19:29:07.054,098.5484,+139.689303<br>
 
 <b>Operation</b><br>
-To move the data through the system, configure the program and run ChaseMappr.exe from the command line. The program must stay in operation while the balloons are in flight. An Arduino sketch is available in the file section to show how to read a serial port and a video at this link [https://vimeo.com/893751948?share=copy#t=0] shows ChaseMappr and the sketch in operation.
+To move the data through the system, configure the program and run ChaseMappr.exe from the command line. The program must stay in operation while the balloons are in flight. An Arduino sketch is available in the file section to show how to read a serial port and a video at this link https://vimeo.com/893751948?share=copy#t=0 shows ChaseMappr and the sketch in operation.
 
 <b>Calibration Routine</b><br>
 If you add a command line parameter of "calibrate" this program runs through a calibration scheme to test the data connection of the pointing device. It will output:<br>
