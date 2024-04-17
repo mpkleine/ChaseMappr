@@ -458,7 +458,7 @@ namespace ClassMappr
         // calculate the distance between the LilyGO and the balloon in kilometers
         public static double distanceInKmBetweenEarthCoordinates(double lat1, double lon1, double lat2, double lon2)
         {
-            double earthRadiusKm = 6371;
+            double earthRadiusKm = 6378.137;
 
             double dLat = degreesToRadians(lat2 - lat1);
             double dLon = degreesToRadians(lon2 - lon1);
@@ -481,5 +481,21 @@ namespace ClassMappr
 
             return radiansToDegrees(angle);
         }
+
+        // routine to calculate elevation between two GPS loctions
+        public static double ElevationCalculation(double lat1, double lat2, double alt2) {
+
+            double elev = 0;
+            double re = 6378.137;
+
+            double L = degreesToRadians(lat1);
+            double G = degreesToRadians(lat2) - degreesToRadians(lat1);
+
+            elev = Math.Atan((Math.Cos(G) * Math.Cos(L) - .1512) / 
+                Math.Sqrt(1 - Math.Cos(G)*Math.Cos(G)*Math.Cos(L)*Math.Cos(L)));
+
+            return radiansToDegrees(elev);
+        }
+
     }
 }
